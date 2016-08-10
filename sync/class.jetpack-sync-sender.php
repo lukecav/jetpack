@@ -14,6 +14,7 @@ class Jetpack_Sync_Sender {
 	const SYNC_THROTTLE_OPTION_NAME = 'jetpack_sync_min_wait';
 	const NEXT_SYNC_TIME_OPTION_NAME = 'jetpack_next_sync_time';
 	const WPCOM_ERROR_SYNC_DELAY = 60;
+	const WPCOM_REGULAR_SYNC_DELAY = 5;
 
 	private $dequeue_max_bytes;
 	private $upload_max_bytes;
@@ -80,6 +81,9 @@ class Jetpack_Sync_Sender {
 		} elseif ( $exceeded_sync_wait_threshold ) {
 			// if we actually sent data and it took a while, wait before sending again
 			$this->set_next_sync_time( time() + $this->get_sync_wait_time() );
+		} elseif ( ! ( $full_sync_result || $sync_result ) ) {
+			// wait 5 seconds if both returned false
+			$this->set_next_sync_time( time() + self::WPCOM_REGULAR_SYNC_DELAY );
 		}
 
 		// we use OR here because if either one returns true then the caller should
