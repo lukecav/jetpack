@@ -17,6 +17,7 @@ class Jetpack_Sync_Settings {
 		'post_types_blacklist' => true,
 		'meta_blacklist'       => true,
 		'disable'              => true,
+		'real_time_full_sync'  => true,
 		'render_filtered_content' => true,
 	);
 
