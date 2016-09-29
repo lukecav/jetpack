@@ -50,6 +50,7 @@ class Jetpack_VideoPress {
 			add_action( 'wp_ajax_save-attachment', array( $this, 'wp_ajax_save_attachment' ), -1 );
 			add_action( 'wp_ajax_save-attachment-compat', array( $this, 'wp_ajax_save_attachment' ), -1 );
 			add_action( 'wp_ajax_delete-post', array( $this, 'wp_ajax_delete_post' ), -1 );
+			add_action( 'wp_ajax_videopress-update-transcoding-status', array( $this, 'wp_ajax_update_transcoding_status' ), -1 );
 
 
 			add_action( 'admin_menu', array( $this, 'admin_menu' ) );
@@ -61,7 +62,7 @@ class Jetpack_VideoPress {
 		}
 
 		add_filter( 'videopress_shortcode_options', array( $this, 'videopress_shortcode_options' ) );
-		add_filter( 'jetpack_xmlrpc_methods', array( $this, 'xmlrpc_methods' ) );	
+		add_filter( 'jetpack_xmlrpc_methods', array( $this, 'xmlrpc_methods' ) );
 		add_filter( 'wp_get_attachment_url', array( $this, 'update_attachment_url_for_videopress' ), 10, 2 );
 
 
@@ -864,12 +865,20 @@ class Jetpack_VideoPress {
 		$created_items = array();
 
 		foreach ( $media as $media_item ) {
+			$post = array(
+				'post_type'      => 'attachment',
+				'post_mime_type' => 'video/videopress',
+				'post_title'     => sanitize_title( basename( $media_item[ 'url' ] ) ),
+				'post_content'   => '',
+			);
 
 			$media_id = $this->create_new_media_item( sanitize_title( basename( $media_item[ 'url' ] ) ) );
 
 			wp_update_attachment_metadata( $media_id, array(
 				'original' => array(
-					'url' => $media_item['url'],
+					'url'       => $media_item[ 'url' ],
+					'file'      => $media_item[ 'file' ],
+					'mime_type' => $media_item[ 'type' ],
 				),
 			) );
 
@@ -883,7 +892,6 @@ class Jetpack_VideoPress {
 	}
 
 	/**
-<<<<<<< HEAD
 	 * @param string $title
 	 * @return int|WP_Error
 	 */
@@ -1032,7 +1040,9 @@ class Jetpack_VideoPress {
 		}
 
 		return true;
-=======
+	}
+
+	/**
 	 * An override for the attachment url, which returns back the WPCOM videopress original url,
 	 * if it is set to the the objects metadata. this allows us to show the original uploaded
 	 * file on the WPCOM architecture, instead of the locally uplodaded file,
@@ -1054,7 +1064,76 @@ class Jetpack_VideoPress {
 		}
 
 		return $url;
->>>>>>> 4.1.0/videopress-attachment-url
+	}
+
+	/**
+	 * Ajax action to update the video transcoding status from the WPCOM API.
+	 *
+	 * @return void
+	 */
+	public function wp_ajax_update_transcoding_status() {
+		if ( ! isset( $_POST['post_id'] ) ) {
+			wp_send_json_error( array( 'message' => __( 'A valid post_id is required.', 'jetpack' ) ) );
+			return;
+		}
+
+		$post_id = (int)$_POST['post_id'];
+
+		if ( ! $this->update_video_meta_data( $post_id ) ) {
+			wp_send_json_error( array( 'message' => __( 'That post does not have a VideoPress video associated to it..', 'jetpack' ) ) );
+			return;
+		}
+
+		wp_send_json_success( array( 'message' => __( 'Status updated', 'jetpack' ), 'status' => videopress_get_transcoding_status( $post_id ) ) );
+	}
+
+	/**
+	 * Update the meta information  status for the given video post.
+	 *
+	 * @param int $post_id
+	 * @return bool
+	 */
+	public function update_video_meta_data( $post_id ) {
+
+        $meta = wp_get_attachment_metadata( $post_id );
+
+        // If this has not been processed by VideoPress, we can skip the rest.
+        if ( ! $meta || ! isset( $meta['videopress'] ) ) {
+	        return false;
+        }
+
+        $info = (object) $meta['videopress'];
+
+        $result = wp_remote_get( $this->make_video_get_path( $info->guid ) );
+
+        if ( is_wp_error( $result ) ) {
+			return false;
+        }
+
+        $response = json_decode( $result['body'], true );
+
+		// Update the attachment metadata.
+		$meta['videopress'] = $response;
+
+		wp_update_attachment_metadata( $post_id, $meta );
+
+		return true;
+	}
+
+	/**
+	 * Get the video update path
+	 *
+	 * @param string $guid
+	 * @return string
+	 */
+	function make_video_get_path( $guid ) {
+		return sprintf(
+			'%s://%s/rest/v%s/videos/%s',
+			'https',
+			JETPACK__WPCOM_JSON_API_HOST,
+			Jetpack_Client::WPCOM_JSON_API_VERSION,
+			$guid
+		);
 	}
 }
 
