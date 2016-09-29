@@ -61,7 +61,9 @@ class Jetpack_VideoPress {
 		}
 
 		add_filter( 'videopress_shortcode_options', array( $this, 'videopress_shortcode_options' ) );
-		add_filter( 'jetpack_xmlrpc_methods', array( $this, 'xmlrpc_methods' ) );
+		add_filter( 'jetpack_xmlrpc_methods', array( $this, 'xmlrpc_methods' ) );	
+		add_filter( 'wp_get_attachment_url', array( $this, 'update_attachment_url_for_videopress' ), 10, 2 );
+
 
 		// Add media list filters. These help keep bad videopress posts from appearing in the feed.
 		add_filter( 'ajax_query_attachments_args', array( $this, 'ajax_query_attachments_args' ), 10, 1 );
@@ -636,7 +638,7 @@ class Jetpack_VideoPress {
 			'caps' => $caps,
 			'l10n' => $l10n,
 		) );
-		
+
 		/**
 		 * Fires after VideoPress scripts are enqueued in the dashboard.
 		 *
@@ -881,6 +883,7 @@ class Jetpack_VideoPress {
 	}
 
 	/**
+<<<<<<< HEAD
 	 * @param string $title
 	 * @return int|WP_Error
 	 */
@@ -1029,6 +1032,29 @@ class Jetpack_VideoPress {
 		}
 
 		return true;
+=======
+	 * An override for the attachment url, which returns back the WPCOM videopress original url,
+	 * if it is set to the the objects metadata. this allows us to show the original uploaded
+	 * file on the WPCOM architecture, instead of the locally uplodaded file,
+	 * which doeasn't exist.
+	 *
+	 * @param string $url
+	 * @param int $post_id
+	 *
+	 * @return mixed
+	 */
+	public function update_attachment_url_for_videopress( $url, $post_id ) {
+
+		if ( get_post_mime_type( $post_id ) === 'video/videopress' ) {
+			$meta = wp_get_attachment_metadata( $post_id );
+
+			if ( isset( $meta['original']['url'] ) ) {
+				$url = $meta['original']['url'];
+			}
+		}
+
+		return $url;
+>>>>>>> 4.1.0/videopress-attachment-url
 	}
 }
 
