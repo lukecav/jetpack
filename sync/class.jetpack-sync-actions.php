@@ -124,6 +124,8 @@ class Jetpack_Sync_Actions {
 			'codec'     => $codec_name, // send the name of the codec used to encode the data
 			'timestamp' => $sent_timestamp, // send current server time so we can compensate for clock differences
 			'queue'     => $queue_id, // sync or full_sync
+			'home'      => get_home_url(), // Send home url option to check for Identity Crisis server-side
+			'siteurl'   => get_site_url(), // Send site url option to check for Identity Crisis server-side
 		), Jetpack::xmlrpc_api_url() );
 
 		$rpc = new Jetpack_IXR_Client( array(
