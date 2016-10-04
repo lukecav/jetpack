@@ -119,14 +119,27 @@ class Jetpack_Sync_Actions {
 	static function send_data( $data, $codec_name, $sent_timestamp, $queue_id ) {
 		Jetpack::load_xml_rpc_client();
 
-		$url = add_query_arg( array(
+		$query_args = array(
 			'sync'      => '1', // add an extra parameter to the URL so we can tell it's a sync action
 			'codec'     => $codec_name, // send the name of the codec used to encode the data
 			'timestamp' => $sent_timestamp, // send current server time so we can compensate for clock differences
 			'queue'     => $queue_id, // sync or full_sync
-			'home'      => get_home_url(), // Send home url option to check for Identity Crisis server-side
-			'siteurl'   => get_site_url(), // Send site url option to check for Identity Crisis server-side
-		), Jetpack::xmlrpc_api_url() );
+		);
+
+		/**
+		 * Allows sites to optin to IDC mitigation which blocks the site from syncing to WordPress.com when the home
+		 * URL or site URL do not match what WordPress.com expects.
+		 *
+		 * @since 4.4.0
+		 *
+		 * @param bool false
+		 */
+		if ( apply_filters( 'jetpack_sync_idc_optin', false ) || Jetpack::is_development_version() ) {
+			$query_args['home']    = get_home_url();    // Send home url option to check for Identity Crisis server-side
+			$query_args['siteurl'] = get_site_url(); // Send home url option to check for Identity Crisis server-side
+		}
+
+		$url = add_query_arg( $query_args, Jetpack::xmlrpc_api_url() );
 
 		$rpc = new Jetpack_IXR_Client( array(
 			'url'     => $url,
